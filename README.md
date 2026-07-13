@@ -1,25 +1,23 @@
-🚗 Used Car Price Prediction
+# 🚗 Used Car Price Prediction
 
 A machine learning web app that predicts the second-hand price of a car based on its features. The user selects details such as brand, model year, mileage, and fuel type, and the model instantly estimates the market price.
 
-🚀 Live Demo
+## 🚀 Live Demo
 
-👉 Try the app here
+👉 [Try the app here](https://araba-fiyat-tahmini-xa5yyodscdklg3c8n2hqxj.streamlit.app)
 
-📸 Screenshot
+## 📸 Screenshot
 
-Show Image
+![App screenshot](screenshot.png)
 
-🛠️ Tech Stack
+## 🛠️ Tech Stack
 
+- **Python** – core programming language
+- **scikit-learn** – machine learning (Random Forest + Pipeline & OneHotEncoder)
+- **pandas** – data processing and cleaning
+- **Streamlit** – web interface and deployment
 
-Python – core programming language
-scikit-learn – machine learning (Random Forest + Pipeline & OneHotEncoder)
-pandas – data processing and cleaning
-Streamlit – web interface and deployment
-
-
-📊 About the Project
+## 📊 About the Project
 
 The model is trained on real used-car market data from Türkiye (~53,500 listings, April 2026). It predicts prices using features such as city, brand, fuel type, transmission, body type, drivetrain, model year, mileage, engine size, and horsepower.
 
@@ -27,15 +25,17 @@ Categorical text features (brand, fuel type, etc.) are transformed into numerica
 
 The model is trained in memory when the app starts and cached afterwards, making the app fast and independent of library versions.
 
-💻 Run Locally
+## 💻 Run Locally
 
-bashpip install -r requirements.txt
+​```bash
+pip install -r requirements.txt
 streamlit run app.py
+​```
 
-📁 Data Source
+## 📁 Data Source
 
 Turkey Used Car Prices (Kaggle) – used-car listing data from Türkiye.
 
-👤 Author
+## 👤 Author
 
 Yiğit Efe USTA – Computer Engineering Student
