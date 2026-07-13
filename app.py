@@ -5,8 +5,8 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 
-# Kullanacagimiz sutunlar
-KATEGORIK = ["konum", "marka", "vites_tipi", "yakit_tipi", "kasa_tipi", "cekis"]
+# Kullanacagimiz sutunlar (artik seri ve model de dahil)
+KATEGORIK = ["konum", "marka", "seri", "model", "vites_tipi", "yakit_tipi", "kasa_tipi", "cekis"]
 SAYISAL   = ["yil", "kilometre", "motor_hacmi", "motor_gucu"]
 
 # Veri okunur ve model uygulama acilirken bir kez egitilir (cache).
@@ -14,40 +14,44 @@ SAYISAL   = ["yil", "kilometre", "motor_hacmi", "motor_gucu"]
 def veri_ve_model():
     df = pd.read_csv("cars1.csv")
     df = df[KATEGORIK + SAYISAL + ["fiyat"]].dropna()
-    # Asiri uc fiyatlari (hatali ilanlar) at, model saglikli olsun
-    df = df[(df["fiyat"] > 50000) & (df["fiyat"] < 15000000)]
+    df = df[(df["fiyat"] > 50000) & (df["fiyat"] < 15000000)]  # hatali ilanlari at
     X = df[KATEGORIK + SAYISAL]
     y = df["fiyat"]
     onisleme = ColumnTransformer(
-        [("kat", OneHotEncoder(handle_unknown="ignore"), KATEGORIK)],
+        # min_frequency: nadir seri/model degerlerini gruplar, bellegi korur
+        [("kat", OneHotEncoder(handle_unknown="ignore", min_frequency=10), KATEGORIK)],
         remainder="passthrough"
     )
-    model = Pipeline([
+    pipe = Pipeline([
         ("onisleme", onisleme),
-        ("model", RandomForestRegressor(n_estimators=50, max_depth=15,
+        ("model", RandomForestRegressor(n_estimators=40, max_depth=18,
                                         random_state=42, n_jobs=-1))
     ])
-    model.fit(X, y)
-    return df, model
+    pipe.fit(X, y)
+    return df, pipe
 
-df, model = veri_ve_model()
+df, pipe = veri_ve_model()
 
 st.title("🚗 Araba Fiyat Tahmini")
 st.write("Aracın özelliklerini seç, tahmini fiyatı gör. (Türkiye 2. el araç verisi ile eğitilmiştir.)")
 
-# Kategorik secimler icin menuleri veriden otomatik doldur
-def secenekler(sutun):
-    return sorted(df[sutun].dropna().unique().tolist())
+def sirala(seri):
+    return sorted(seri.dropna().astype(str).unique().tolist())
 
 col1, col2 = st.columns(2)
 with col1:
-    konum      = st.selectbox("Şehir", secenekler("konum"))
-    marka      = st.selectbox("Marka", secenekler("marka"))
-    yakit_tipi = st.selectbox("Yakıt tipi", secenekler("yakit_tipi"))
-    vites_tipi = st.selectbox("Vites tipi", secenekler("vites_tipi"))
+    konum = st.selectbox("Şehir", sirala(df["konum"]))
+    # Kademeli menuler: marka -> seri -> model
+    marka = st.selectbox("Marka", sirala(df["marka"]))
+    seri_secenek = sirala(df[df["marka"] == marka]["seri"])
+    seri = st.selectbox("Seri", seri_secenek)
+    model_secenek = sirala(df[(df["marka"] == marka) & (df["seri"] == seri)]["model"])
+    secili_model = st.selectbox("Model", model_secenek)
+    yakit_tipi = st.selectbox("Yakıt tipi", sirala(df["yakit_tipi"]))
 with col2:
-    kasa_tipi  = st.selectbox("Kasa tipi", secenekler("kasa_tipi"))
-    cekis      = st.selectbox("Çekiş", secenekler("cekis"))
+    vites_tipi = st.selectbox("Vites tipi", sirala(df["vites_tipi"]))
+    kasa_tipi  = st.selectbox("Kasa tipi", sirala(df["kasa_tipi"]))
+    cekis      = st.selectbox("Çekiş", sirala(df["cekis"]))
     yil        = st.number_input("Model yılı", min_value=1990, max_value=2026, value=2018)
     kilometre  = st.number_input("Kilometre", min_value=0, value=100000, step=5000)
 
@@ -59,11 +63,12 @@ with col4:
 
 if st.button("Fiyatı Tahmin Et", type="primary"):
     arac = pd.DataFrame([{
-        "konum": konum, "marka": marka, "vites_tipi": vites_tipi,
-        "yakit_tipi": yakit_tipi, "kasa_tipi": kasa_tipi, "cekis": cekis,
+        "konum": konum, "marka": marka, "seri": seri, "model": secili_model,
+        "vites_tipi": vites_tipi, "yakit_tipi": yakit_tipi,
+        "kasa_tipi": kasa_tipi, "cekis": cekis,
         "yil": yil, "kilometre": kilometre,
         "motor_hacmi": motor_hacmi, "motor_gucu": motor_gucu,
     }])
-    tahmin = model.predict(arac)[0]
+    tahmin = pipe.predict(arac)[0]
     st.success(f"Tahmini fiyat: {tahmin:,.0f} TL")
-    st.caption("Bu tahmin, ilan verilerine dayalı bir makine öğrenmesi modeli tarafından üretilmiştir.")
+    st.caption(f"{marka} {seri} • {yil} • {kilometre:,.0f} km")
